@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block content %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Center</title>
+    <!-- 引入 layui 的 CSS 文件 -->
+    <link rel="stylesheet" href="https://cdn.staticfile.org/layui/2.6.8/css/layui.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        .centered-container {
+            position: absolute;
+            top: 100px;
+            left: 30px;
+            height: 400px;
+            width: 650px;
+        }
+    </style>
+</head>
+<div class="layui-layout layui-layout-admin">
+    <div class="layui-header">
+        <div class="layui-logo layui-hide-xs layui-bg-black">
+            <i class="fa fa-stethoscope" aria-hidden="true"></i>
+            <a href="{{ url_for('index') }}" style="color: white;">EyeFort</a>
+            <div class="layui-logo layui-layout-item " style="color: white; position: absolute; left: 760px">EyeFort智能检测</div>
+        </div>
+    </div>
+</div>
+<!-- 左侧显示用户基本信息 -->
+<div class="centered-container">
+        <div class="layui-row">
+            <div class="layui-col-md-offset3 layui-col-md6">
+                <fieldset class="layui-elem-field">
+                    <legend>当前用户信息</legend>
+                    <div class="layui-field-box">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">姓名:</label>
+                            <div class="layui-input-block">
+                                <input type="text" name="name" lay-verify="required" autocomplete="off" class="layui-input" value="{{ username }}" disabled>
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">电话:</label>
+                            <div class="layui-input-block">
+                                <input type="text" name="phone" lay-verify="required" autocomplete="off" class="layui-input" value="{{ phone }}" disabled>
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">检测结果:</label>
+                            <div class="layui-input-block">
+                                <input type="text" name="result" lay-verify="required" autocomplete="off" class="layui-input" value="{{ result }}" disabled>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+            </div>
+        </div>
+</div>
+
+
+<div class="main">
+  <div class="title">
+    <h3>EyeFort智能检测</h3>
+    <!-- <p>
+      <small>A web app demo</small>
+    </p> -->
+  </div>
+
+  <div class="panel">
+    <input id="file-upload" class="hidden" type="file" accept="image/x-png,image/gif,image/jpeg" />
+    <label for="file-upload" id="file-drag" class="upload-box">
+      <div id="upload-caption">选择您需要诊断的OCT图片</div>
+      <img id="image-preview" class="hidden" />
+    </label>
+  </div>
+  <div style="margin-bottom: 2rem;">
+    <input type="button" value="智能诊断" class="button" onclick="submitImage();" />
+    <a href="{{ url_for('index') }}"><input type="button" value="返回主页" class="button"/></a>
+    <input type="button" value="清除图像" class="button" onclick="clearImage();" />
+  </div>
+
+  <div id="image-box">
+    <img id="image-display" />
+    <div id="pred-result" class="hidden"></div>
+    <svg id="loader" class="hidden" viewBox="0 0 32 32" width="32" height="32">
+      <circle id="spinner" cx="16" cy="16" r="14" fill="none"></circle>
+    </svg>
+  </div>
+</div>
+
+<script>
+  function submitImage() {
+    console.log("submit");
+    if (!imageDisplay.src || !imageDisplay.src.startsWith("data")) {
+        window.alert("请在提交前选择图像.");
+        return;
+    }
+    loader.classList.remove("hidden");
+    imageDisplay.classList.add("loading");
+
+    // 发送图像到后端进行预测
+    predictImage(imageDisplay.src);
+}
+
+function displayResult(data) {
+    hide(loader);
+
+    // 修改这里的代码，确保使用正确的键获取新模型的预测结果
+    var result = data.vgg16;
+    predResult.innerHTML = "诊断结果为: " + result;
+
+    // 更新用户信息中的检测结果
+    var resultInput = document.querySelector('input[name="result"]');
+    resultInput.value = result;
+
+    // 将预测结果写入数据库
+    saveResultToDatabase(result);
+
+    show(predResult);
+}
+
+function saveResultToDatabase(result) {
+    // 发送预测结果到后端保存到数据库
+    fetch("/save_result", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ result: result })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error("保存结果失败.");
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log("预测结果已保存到数据库.", data);
+    })
+    .catch(error => {
+        console.error("保存结果时出错:", error);
+    });
+}
+
+</script>
+<script src="https://cdn.staticfile.org/layui/2.6.8/layui.js"></script>
+<script src="https://cdn.staticfile.org/jquery/3.6.0/jquery.min.js"></script>
+{% endblock %}
